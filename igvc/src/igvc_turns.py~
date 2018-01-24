@@ -1,0 +1,160 @@
+#!/usr/bin/env python
+# license removed for brevity
+import rospy, time
+from std_msgs.msg import Bool
+from sensor_msgs.msg import Joy
+from std_msgs.msg import Int16MultiArray
+from geometry_msgs.msg import Twist
+
+############# Global Variables #####################
+go_flg = False
+pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+moveCmd = Twist()
+controller = Joy()
+
+############# Functions (non-callbacks) ############
+
+#left is negative
+#right is positive
+def turn(x):
+    global moveCmd    
+    moveCmd.linear.x = 0.5
+    moveCmd.linear.y = 0
+    moveCmd.linear.z = 0
+    moveCmd.angular.x = 0
+    moveCmd.angular.y = 0
+    moveCmd.angular.z = x
+    pub.publish(moveCmd)
+
+def turnLeft():
+    global moveCmd    
+    moveCmd.linear.x = 0.25
+    moveCmd.linear.y = 0
+    moveCmd.linear.z = 0
+    moveCmd.angular.x = 0
+    moveCmd.angular.y = 0
+    moveCmd.angular.z = -0.5
+    pub.publish(moveCmd)
+
+def turnRight():
+    global moveCmd    
+    moveCmd.linear.x = 0.25
+    moveCmd.linear.y = 0
+    moveCmd.linear.z = 0
+    moveCmd.angular.x = 0
+    moveCmd.angular.y = 0
+    moveCmd.angular.z = 0.5
+    pub.publish(moveCmd)
+
+def goStraight():
+    global moveCmd    
+    moveCmd.linear.x = 0.5
+    moveCmd.linear.y = 0
+    moveCmd.linear.z = 0
+    moveCmd.angular.x = 0
+    moveCmd.angular.y = 0
+    moveCmd.angular.z = 0
+    pub.publish(moveCmd)
+
+def goBack():
+    global moveCmd    
+    moveCmd.linear.x = -0.5
+    moveCmd.linear.y = 0
+    moveCmd.linear.z = 0
+    moveCmd.angular.x = 0
+    moveCmd.angular.y = 0
+    moveCmd.angular.z = 0
+    pub.publish(moveCmd)
+
+def stop():
+    global moveCmd    
+    moveCmd.linear.x = 0
+    moveCmd.linear.y = 0
+    moveCmd.linear.z = 0
+    moveCmd.angular.x = 0
+    moveCmd.angular.y = 0
+    moveCmd.angular.z = 0
+    pub.publish(moveCmd)
+    
+
+
+############# Callbacks #############################
+def go_stop_callback(button):
+    global go_flg
+    go_flg = button.data   
+    
+    
+def button_callback(sig):
+    global controller
+    controller = sig
+        
+############# Node Definitions ######################
+def turning():
+    rospy.init_node('gvrbot_turns',anonymous=True)
+    rospy.Subscriber('button_state', Bool, go_stop_callback)
+    rospy.Subscriber('joy',Joy,button_callback)
+    
+#0 = A
+#1 = B
+#2 = X
+#3 = Y
+ 
+if __name__ == '__main__':
+    try:
+        turning()t
+        rate = rospy.Rate(50)
+        loopCnt = 0
+        while not rospy.is_shutdown():
+            left = 0
+            right = 0
+            #state machine
+            if go_flg:
+
+                #half left
+                #if button[2] == 1 and button[0]:
+                if len(controller.buttons)>1 and controller.buttons[2] == 1 and controller.buttons[0] == 1:
+                    turn(-0.25)
+                    print "Half Left"
+
+                #half right
+                #if button[2] == 1 and button[1]:
+                elif len(controller.buttons)>1 and controller.buttons[2] == 1 and controller.buttons[1] == 1:
+                    turn(0.25)
+                    print "Half Right"
+                #left
+                #if button[0] == 1:
+                elif len(controller.buttons)>1 and controller.buttons[0] == 1:
+                    turnLeft() 
+                    print "Left"
+
+                #right  
+                #if button[1] == 1:          
+                elif len(controller.buttons)>1 and controller.buttons[1] == 1:
+                    turnRight()
+                    print "Right"
+
+                #straight
+                #if button[2] == 1:
+                elif len(controller.buttons)>1 and controller.buttons[2] == 1:
+                    goStraight()
+                    print "Straight"
+
+                #reverse
+                #if button[3] == 1:
+                elif len(controller.buttons)>1 and controller.buttons[3] == 1:
+                    goBack() 
+                    print "Reverse"
+
+            else:
+                #joystick push button ("B") stop
+                stop()
+
+            rate.sleep()    
+    except rospy.ROSInterruptException:
+        print "exiting"
+    finally:
+        moveCmd.linear.x = 0
+        moveCmd.linear.y = 0
+        moveCmd.linear.z = 0
+        pub.publish(moveCmd)
+                

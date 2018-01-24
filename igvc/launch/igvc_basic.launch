@@ -1,0 +1,23 @@
+<launch>
+
+    <arg name="joy_dev" default="/dev/input/js0" />
+    <!-- When using an Xbox 360 controller A is the trigger and the left joystick will move the robot -->
+    <node pkg="joy" type="joy_node" name="joy_node">
+      <param name="dev" value="$(arg joy_dev)" />
+      <param name="deadzone" value="0.3" />
+      <param name="autorepeat_rate" value="20" />
+    </node>
+    
+    <node pkg="igvc" type="button_publisher.py" name="button_pub" output="screen">
+    </node>
+
+    <node pkg="igvc" type="igvc_pixy_nav.py" name="igvc_pixy_nav" output="screen">
+    </node>
+
+    <node pkg="pixycam" type="pixy_driver.py" name="pixy_driver" output="screen">
+    </node>
+
+    <node pkg="xsens_driver" type="mtnode_new.py" name="xsens_driver" output="screen" ns="xsens">
+    </node>
+
+</launch>
