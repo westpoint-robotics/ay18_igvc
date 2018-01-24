@@ -320,7 +320,7 @@ if __name__ == '__main__':
 
         flg_nothingFound, wayPointList = getWayPoint(wayPointNum) # where wayPointlist = [lat,lon]
         if flg_nothingFound:            #if no waypoint returned, then goto "stop" state
-            print "No Starting WayPoint"
+            #print "No Starting WayPoint"
         else:
             destLat = wayPointList[0]   #extract destination coordinates from waypoint list
             destLon = wayPointList[1]
@@ -345,23 +345,23 @@ if __name__ == '__main__':
             #distance = (lat + lon) - (destLat+destLon)
             if autonomous_flag and gps_flag == False and gpsSwitchDistance > distance:
                 gps_flag = True
-                print "GPS ON"
+                #print "GPS ON"
             #Nav ... reach destination
             if waypoint_flag and gps_flag and distance < 1:   #reach waypoint (close enough)
-                    print "Reached Waypoint!!!"
+                    #print "Reached Waypoint!!!"
                     destination_flag = True
                     waypoint_flag = False
             #Autonomous Mode
             if len(controller.buttons)>1 and controller.buttons[1] == 1 and prevB == 0:
                     autonomous_flag = not (autonomous_flag)
                     prevB = 1
-                    print "Auto", autonomous_flag
+                    #print "Auto", autonomous_flag
             elif len(controller.buttons)>1 and controller.buttons[1] ==0:
                     prevB = 0
             if len(controller.buttons)>1 and controller.buttons[3] == 1 and prevY == 0:
                     rightFollow_flag = not (rightFollow_flag)
                     prevY = 1
-                    print "Right", rightFollow_flag
+                    #print "Right", rightFollow_flag
             elif len(controller.buttons)>1 and controller.buttons[3] ==0:
                     prevY = 0
 
@@ -390,35 +390,47 @@ if __name__ == '__main__':
             # 212   ||   GPS LineFollowLeft
 
             ###SET STATE###
+            stateOut = "Manaul
             if autonomous_flag:
                 if gps_flag:
                     if destination_flag:
                         state_present = 203
+                        stateOut = "GPS ARRIVED"
                     elif waypoint_flag:
                         if lineDetect_flag:
                             if not gpsDecision_flag:
                                 state_present = 210
+                                stateOut = "GPS LINE DECISION"
                             elif rightFollow_flag:
                                 state_present = 211
+                                stateOut = "GPS LINEFOLLOWRIGHT"
                             else:
                                 state_present = 212
+                                stateOut = "GPS LINEFOLLOWLEFT"
                         else:
                             state_present = 202
+                            stateOut = "GPS NOLINE"
                     else:
                         state_present = 201
+                        stateOut = "GPS GET WAYPOINT"
                 else:
                     if rightFollow_flag:
                         if lineDetect_flag:
                             state_present = 101
+                            stateOut = "LINEFOLLOWRIGHT LINE"
                         else:
                             state_present = 100
+                            stateOut = "LINEFOLLOWRIGHT NOLINE"
                     else:
                         if lineDetect_flag:
                             state_present = 111
+                            stateOut = "LINEFOLLOWLEFT LINE"
                         else:
                             state_present = 110
+                            stateOut = "LINEFOLLOWLEFT NOLINE"
             else:
                 state_present = 000
+            #print stateOut
 
             ###EXECUTE###
             #MANUAL
@@ -489,11 +501,11 @@ if __name__ == '__main__':
                 with open("/home/user1/catkin_ws/posPoints.csv", "a") as posFile:
                     posFile.write(str(timeSecs)+','+str(distance)+','+str(desBearing)+','+str(robot_heading)+'\n')                           #haven't arrived; keep going
                 error=steeringController(robot_heading,desBearing,distance)
-                print "heading error & distance = ",error,distance
+                #print "heading error & distance = ",error,distance
             #GPS ARRIVED
             elif 203 == state_present:            #arrived state
                 #perform arrival routine (e.g. flash LEDs); in this case, delay for 5 seconds
-                print "Stopping motors & going to sleep for 5 seconds"
+                #print "Stopping motors & going to sleep for 5 seconds"
                 stop()
                 startTime = rospy.get_rostime()
                 d = rospy.Duration.from_sec(5.0)
