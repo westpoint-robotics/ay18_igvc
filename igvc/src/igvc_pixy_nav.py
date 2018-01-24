@@ -15,10 +15,13 @@ pixyYCutOff = 100 #Higher the number means shortest view
 pixyYBackUp = 50
 pixyXBackup = 290
 #X and Y to make Izzy turn Hard left
-pixyYHardLeft = 80
+pixyYHardTurn = 80
 pixyXHardLeft = 300
+pixyXHardRight = 20
 #X to make Izzy turn left
 pixyXTurnLeft = 290
+pixyXTurnRight = 5
+
 #####################################################
 
 ############## Global Variables #####################
@@ -39,7 +42,7 @@ lineDetect_flag = False #Is there a line present we want the robot to react to
 
 waypoint_flag = False #Is there a waypoint for us to travel to
 destination_flag = False #Have we reached the waypoint
-gpsDecision_flag = False #Do we need to make
+gpsDecision_flag = False #Has A decision been made for gps line detect
 
 ###General Bot movement/control
 pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
@@ -439,13 +442,14 @@ if __name__ == '__main__':
                 gradRight()
             #LINEFOLLOWLEFT NO LINE
             elif 110 == state_present:
-                turnLeft()
+                print "NOLINE"
+                gradLeft()
             #LINEFOLLOWRIGHT LINE
             elif 101 == state_present:
                 if closestSignature[1]> pixyYBackUp and closestSignature[0] < pixyXBackUp:
                     print "Back Up"
                     reverse()
-                elif closestSignature[1] > pixyYHardLeft and closestSignature[0] < pixyXHardLeft:
+                elif closestSignature[1] > pixyYHardTurn and closestSignature[0] < pixyXHardLeft:
                     print "Hard Left"
                     hardLeft()
                 elif closestSignature[0] < pixyXTurnLeft:
@@ -455,12 +459,15 @@ if __name__ == '__main__':
                     goStraight()
             #LINEFOLLOWLEFT LINE
             elif 111 == state_present:
-                if presentSignature[3] > 120 or (presentSignature[5] > 200):
+                if closestSignature[1]> pixyYBackUp:
+                    print "Back Up"
+                    reverse()
+                elif closestSignature[1] > pixyYHardTurn and closestSignature[0] > pixyXHardRight:
+                    print "Hard Right"
                     hardRight()
-                elif presentSignature[3] > 50 or (presentSignature[5] > 200):
+                elif closestSignature[0] > pixyXTurnRight:
+                    print "Turn Right"
                     turnRight()
-                elif presentSignature[3] < 50 or (presentSignature[5] < 50):
-                    turnLeft()
                 else:
                     goStraight()
             #GPS GET WAYPOINT
