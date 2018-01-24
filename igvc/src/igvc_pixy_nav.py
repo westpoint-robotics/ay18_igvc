@@ -11,7 +11,14 @@ gpsSwitchDistance = 7
 
 #How far Izzy will see
 pixyYCutOff = 100 #Higher the number means shortest view
-
+#X and Y to make Izzy back up
+pixyYBackUp = 50
+pixyXBackup = 290
+#X and Y to make Izzy turn Hard left
+pixyYHardLeft = 80
+pixyXHardLeft = 300
+#X to make Izzy turn left
+pixyXTurnLeft = 290
 #####################################################
 
 ############## Global Variables #####################
@@ -256,7 +263,6 @@ def steeringController(currentHeading,desiredHeading,dist):
 
 ############# Callbacks #############################
 ###PIXY
-#
 def pixy_callback(sig):
     global presentSignature
     global previousSignature
@@ -267,11 +273,15 @@ def pixy_callback(sig):
     ##Checking for most immediate threat in frame
     #Check if block is in the same frame
     if presentFrameNum == presentSignature[0] and presentSignature[0] != 0:
-        #Check if it is more of a concern then previous block in frame
-        if presentSignature[4] + presentSignature[6] > pixyYCutOff:
+        #Check if we care about signature
+        sigList.append([presentSignature[3],presentSignature[4] + presentSignature[6])
     #If not in frame send previous frames close block
     else:
-        closestSignature = [previousSignature[3],previousSignature[5] + previousSignature[6]]
+        for sign in sigList:
+            if sign[1] > final[1]:
+                final = sign
+        closestSignature = final
+        sigList = [presentSignature[3],presentSignature[4]+presentSignature[6]]
     presentFrameNum = sig.data[0]
 
 def button_callback(sig):
@@ -356,7 +366,7 @@ if __name__ == '__main__':
             if closesetSignature = [0,0]:
                 lineDetect_flag = False
                 #print "No Sig"
-            elif closestSignature[1] > 100:
+            elif closestSignature[1] > pixyYCutOff:
                 lineDetect_flag = True
                 #print "Signature and true"
             else:
@@ -432,10 +442,13 @@ if __name__ == '__main__':
                 turnLeft()
             #LINEFOLLOWRIGHT LINE
             elif 101 == state_present:
-                if closestSignature[1] > 80 and closestSignature[0] < 320:
+                if closestSignature[1]> pixyYBackUp and closestSignature[0] < pixyXBackUp:
+                    print "Back Up"
+                    reverse()
+                elif closestSignature[1] > pixyYHardLeft and closestSignature[0] < pixyXHardLeft:
                     print "Hard Left"
                     hardLeft()
-                elif closestSignature[0] < 300:
+                elif closestSignature[0] < pixyXTurnLeft:
                     print "Turn Left"
                     turnLeft()
                 else:
@@ -443,11 +456,10 @@ if __name__ == '__main__':
             #LINEFOLLOWLEFT LINE
             elif 111 == state_present:
                 if presentSignature[3] > 120 or (presentSignature[5] > 200):
-                    print "Hard Right"
                     hardRight()
-                elif presentSignature[3] > 50 or (presentSignature[5] > 200):# or (presentSignature[3]+presentSignature[5]<250)):
+                elif presentSignature[3] > 50 or (presentSignature[5] > 200):
                     turnRight()
-                elif presentSignature[3] < 50 or (presentSignature[5] < 50):# or (presentSignature[3]+presentSignature[5]>250)):
+                elif presentSignature[3] < 50 or (presentSignature[5] < 50):
                     turnLeft()
                 else:
                     goStraight()
