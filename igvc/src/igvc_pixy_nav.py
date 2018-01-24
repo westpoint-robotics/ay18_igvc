@@ -5,40 +5,47 @@ from sensor_msgs.msg import Joy, NavSatFix
 from std_msgs.msg import Int16MultiArray, Int16
 from geometry_msgs.msg import Twist
 
-############## Global Variables #####################
-
-#State/Boolean variables
-state_present = 000
-
-autonomous_flag = False
-prevB = 0
-
-gps_flag = False
-prevX = 0
-
-rightFollow_flag = True
-prevY = 0
-
-lineDetect_flag = False
-
-waypoint_flag = False
-
-destination_flag = False
-
-gpsDecision_flag = False
-
+#####VARIABLES TO CHANGE TO AFFECT ROBOT ACTIONS#####
+#Distance from first waypoint Izzy should switch from linefollowing to gps in meters
 gpsSwitchDistance = 7
 
-#Pixy_Nav
+#How far Izzy will see
+pixyYCutOff = 100 #Higher the number means shortest view
+
+#####################################################
+
+############## Global Variables #####################
+
+###State/Boolean variables
+state_present = 000 #State code
+
+autonomous_flag = False
+prevB = 0 #Hold previous state of 'B' button on controller
+
+gps_flag = False
+prevX = 0 #Hold previous state of 'X' button on controller
+
+rightFollow_flag = True
+prevY = 0 #Hold previous state of 'Y' button on controller
+
+lineDetect_flag = False #Is there a line present we want the robot to react to
+
+waypoint_flag = False #Is there a waypoint for us to travel to
+destination_flag = False #Have we reached the waypoint
+gpsDecision_flag = False #Do we need to make
+
+###General Bot movement/control
 pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
 moveCmd = Twist()
 controller = Joy()
-presentFrameNum = 0 
+
+###Pixy_Nav
+presentFrameNum = 0
 presentSignature = [0,0,0,0,0,0,0] #format of sig. list:  frame, type, signatureNum, x, y, width, height
-previousSignature = [0,0,0,0,0,0,0]
 closestSignature = [0,0]
 
-#GPS_Nav
+###GPS_Nav
+#Can be set manually to test changes between line following and gps states
 lat = 14
 lon = 14
 destLat = 0
@@ -55,7 +62,7 @@ maxErr = 180
 
 ############# Functions (non-callback) #################
 
-#Izzy Movement
+###Izzy Movement
 def stop():
     global moveCmd
     moveCmd.linear.x=0
@@ -68,7 +75,7 @@ def stop():
 
 def gradRight():
     #Mostly Forward and Right
-    global moveCmd    
+    global moveCmd
     moveCmd.linear.x = 0.25
     moveCmd.linear.y = 0
     moveCmd.linear.z = 0
@@ -79,7 +86,7 @@ def gradRight():
 
 def turnLeft():
     #Forward and Left
-    global moveCmd    
+    global moveCmd
     moveCmd.linear.x = 0.25
     moveCmd.linear.y = 0
     moveCmd.linear.z = 0
@@ -101,7 +108,7 @@ def hardLeft():
 
 def turnRight():
     #Forward and Right
-    global moveCmd    
+    global moveCmd
     moveCmd.linear.x = 0.25
     moveCmd.linear.y = 0
     moveCmd.linear.z = 0
@@ -122,7 +129,7 @@ def hardRight():
     pub.publish(moveCmd)
 
 def goStraight():
-    global moveCmd    
+    global moveCmd
     moveCmd.linear.x = 0.5
     moveCmd.linear.y = 0
     moveCmd.linear.z = 0
@@ -132,7 +139,7 @@ def goStraight():
     pub.publish(moveCmd)
 
 def reverse():
-    global moveCmd    
+    global moveCmd
     moveCmd.linear.x = -0.5
     moveCmd.linear.y = 0
     moveCmd.linear.z = 0
@@ -141,40 +148,40 @@ def reverse():
     moveCmd.angular.z = 0
     pub.publish(moveCmd)
 
-#GPS Functions
+###GPS Functions
 def haversine(currentLat,currentLon, destLat, destLon):
-    #Calculate the great circle distance between two points 
+    #Calculate the great circle distance between two points
     #on the earth (specified in decimal degrees - Lat/Lon coords) using Haversine Formula
-    
+
     haversineDistance = math.acos( math.sin(currentLat*math.pi/180)*math.sin(destLat*math.pi/180) + math.cos(currentLat*math.pi/180)*math.cos(destLat*math.pi/180)*math.cos(destLon*math.pi/180-currentLon*math.pi/180) ) * 6371000
-    
-    haversineAngle = ( math.atan2(math.cos(currentLat)*math.sin(destLat)-math.sin(currentLat)*math.cos(destLat)*math.cos(destLon-currentLon), math.sin(destLon-currentLon)*math.cos(destLat)) ) * (180/math.pi) 
-    
+
+    haversineAngle = ( math.atan2(math.cos(currentLat)*math.sin(destLat)-math.sin(currentLat)*math.cos(destLat)*math.cos(destLon-currentLon), math.sin(destLon-currentLon)*math.cos(destLat)) ) * (180/math.pi)
+
     #transform angle perspective - Haversine calculates angle with the perspective that 90 degrees points North
     #for magnetic field reference, we need North to correspond to 0 degrees, so subtract 90
     magBearing = haversineAngle - 90
     #account for declination angle (Westerly declination, so add offset)
-    magBearing = magBearing + declinationAngle  
+    magBearing = magBearing + declinationAngle
     #account for angle wrap
     if magBearing < 0:
-        magBearing = magBearing + 360 
+        magBearing = magBearing + 360
     elif magBearing > 360:
         magBearing = magBearing - 360
-    return haversineDistance, magBearing 
+    return haversineDistance, magBearing
 
 def getWayPoint(wayPointNum):
     #this function iterates over each line (i.e., row) in a file containing waypoints
     #it returns the contents of the desired line (i.e., the current waypoint targeted)
     #1 input parameter:  the desired waypoint number
-    #2 output parameters:  flag on whether waypoint found; and, waypoint coordinates  
-    count = 0               #counter keeps track of line number in file 
-    flg_nothingFound = True         #flag; set to true if waypoint number is NOT found 
+    #2 output parameters:  flag on whether waypoint found; and, waypoint coordinates
+    count = 0               #counter keeps track of line number in file
+    flg_nothingFound = True         #flag; set to true if waypoint number is NOT found
     with open("/home/user1/catkin_ws/src/igvc/src/wayPoints.csv",'r') as wayPoints: #change path to file as necessary
         for line in wayPoints:      #iterate over every line in file
             count = count + 1       #track line number of file
-            if count == wayPointNum:    #check to see if this is the desired waypoint number (i.e. row)    
+            if count == wayPointNum:    #check to see if this is the desired waypoint number (i.e. row)
                 flg_nothingFound = False    #found a match!  Set flag.
-                wayPointList = line.strip().split(',') #convert string into list of strings; slit into list based on commas in string 
+                wayPointList = line.strip().split(',') #convert string into list of strings; slit into list based on commas in string
                 wayPointList = map(float,wayPointList) #convert list of strings into list of floats
     if flg_nothingFound == True:     # didn't find line number (no more wayPoints in file)
         print "stopping robot; there are no more waypoints"
@@ -185,14 +192,14 @@ def linearMap(val, in_min, in_max, out_min, out_max):
     return float ((val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
 
-def steeringController(currentHeading,desiredHeading,dist): 
+def steeringController(currentHeading,desiredHeading,dist):
     # find best (i.e., shortest direction) to turn vehicle toward desired heading
     # this function compares both turning options (left & right) and finds shortest to reach desired
     # function returns "error" or how much of an angle difference between desired & actual heading
-    turn_flg = True # initialize flag that robot should turn in some direction    
+    turn_flg = True # initialize flag that robot should turn in some direction
     global moveCmd
     print "Desired: ",desiredHeading," Current: ",currentHeading
-    if (desiredHeading > currentHeading):  
+    if (desiredHeading > currentHeading):
         turnRightOption = desiredHeading - currentHeading
         turnLeftOption = currentHeading + (360 - desiredHeading)
     elif (currentHeading > desiredHeading):
@@ -200,8 +207,8 @@ def steeringController(currentHeading,desiredHeading,dist):
         turnRightOption = (360 - currentHeading) + desiredHeading
     else:
         turn_flg = False # don't turn because desired = current
-        
-    #Steering Control 
+
+    #Steering Control
     if turn_flg: #if there is error, then turn. But which direction is best?
         if (turnRightOption < turnLeftOption):      #turn right
             error=turnRightOption
@@ -217,7 +224,7 @@ def steeringController(currentHeading,desiredHeading,dist):
     else:       #no turn necessary. Go straight
         moveCmd.angular.z=0
         print "go straight"
-        
+
     #Speed Control
     if error>60: # then go slow to adjust heading
         #speed = slow;
@@ -232,7 +239,7 @@ def steeringController(currentHeading,desiredHeading,dist):
             #go slow
             print "slow...nearing waypoint"
             moveCmd.linear.x=.5
-        elif distance < 30: 
+        elif distance < 30:
             #go mod speed
             print "mod speed...between 30 to 10m"
             moveCmd.linear.x=.75
@@ -244,40 +251,34 @@ def steeringController(currentHeading,desiredHeading,dist):
     moveCmd.linear.z=0
     moveCmd.angular.x=0
     moveCmd.angular.y=0
-    pub.publish(moveCmd)    
+    pub.publish(moveCmd)
     return error
 
 ############# Callbacks #############################
-#PIXY
-def go_stop_callback(button):
-    global go_flg
-    go_flg = button.data
-    global start_flg
-    start_flg = button.data
-
+###PIXY
+#
 def pixy_callback(sig):
     global presentSignature
     global previousSignature
     global presentFrameNum
     global closestSignature
-    #print sig.data
+    final =[0,0]
     presentSignature = sig.data
     ##Checking for most immediate threat in frame
     #Check if block is in the same frame
-    if presentFrameNum = presentSignature[0]:
+    if presentFrameNum == presentSignature[0] and presentSignature[0] != 0:
         #Check if it is more of a concern then previous block in frame
-        if presentSignature[5] + presentSignature[6] > previousSignature[5] + previousSignature[6] and presentSignature[3] < 320:
-            previousSignature = presentSignature
+        if presentSignature[4] + presentSignature[6] > pixyYCutOff:
     #If not in frame send previous frames close block
     else:
         closestSignature = [previousSignature[3],previousSignature[5] + previousSignature[6]]
     presentFrameNum = sig.data[0]
-    
+
 def button_callback(sig):
     global controller
     controller = sig
 
-#GPS
+###GPS
 def latLon_callback(data):
     #update current gps location
     global lat
@@ -287,15 +288,14 @@ def latLon_callback(data):
 
 def mag_callback(mag):
     #update current robot heading
-    global robot_heading 
+    global robot_heading
     robot_heading=mag.data
 
 ####Node Definitions####
 def node_nav():
     rospy.init_node('gvrbot_pixy_nav',anonymous=True)
     rospy.Subscriber('joy',Joy,button_callback)
-    rospy.Subscriber('button_state', Bool, go_stop_callback)
-    rospy.Subscriber('pixy_signature', Int16MultiArray, pixy_callback)  
+    rospy.Subscriber('pixy_signature', Int16MultiArray, pixy_callback)
     rospy.Subscriber("/xsens/fix", NavSatFix, latLon_callback)
     rospy.Subscriber("tiltComp_heading",Int16, mag_callback)
 
@@ -304,7 +304,7 @@ if __name__ == '__main__':
     try:
         node_nav()
         rate = rospy.Rate(140)
-        
+
         flg_nothingFound, wayPointList = getWayPoint(wayPointNum) # where wayPointlist = [lat,lon]
         if flg_nothingFound:            #if no waypoint returned, then goto "stop" state
             print "No Starting WayPoint"
@@ -350,9 +350,8 @@ if __name__ == '__main__':
                     prevY = 1
                     print "Right", rightFollow_flag
             elif len(controller.buttons)>1 and controller.buttons[3] ==0:
-<<<<<<< HEAD
                     prevY = 0
-                    
+
             #PixyCam
             if closesetSignature = [0,0]:
                 lineDetect_flag = False
@@ -363,7 +362,7 @@ if __name__ == '__main__':
             else:
                 lineDetect_flag = False
                 #print "Signture but false"
-            
+
             ####STATE CHART####
             # 000   ||   Manual Mode
             # 100   ||   LineFollowRight No Line
@@ -376,7 +375,7 @@ if __name__ == '__main__':
             # 210   ||   GPS Line Decision
             # 211   ||   GPS LineFollowRight
             # 212   ||   GPS LineFollowLeft
-                     
+
             ###SET STATE###
             if autonomous_flag:
                 if gps_flag:
@@ -396,24 +395,24 @@ if __name__ == '__main__':
                         state_present = 201
                 else:
                     if rightFollow_flag:
-                        if lineDetect_flag: 
+                        if lineDetect_flag:
                             state_present = 101
                         else:
                             state_present = 100
                     else:
-                        if lineDetect_flag: 
+                        if lineDetect_flag:
                             state_present = 111
                         else:
                             state_present = 110
             else:
                 state_present = 000
-            
+
             ###EXECUTE###
             #MANUAL
             if 000 == state_present:
                 #Joystick push button ("A") to go
                 if len(controller.buttons) > 1 and controller.buttons[0] == 1:
-                    global moveCmd    
+                    global moveCmd
                     moveCmd.linear.x = controller.axes[1]
                     moveCmd.linear.y = 0
                     moveCmd.linear.z = 0
@@ -423,7 +422,7 @@ if __name__ == '__main__':
                     pub.publish(moveCmd)
                 else:
                     stop()
-                    
+
             #LINEFOLLOWRIGHT NO LINE
             elif 100 == state_present:
                 print "NOLINE"
@@ -460,23 +459,23 @@ if __name__ == '__main__':
                     print "No waypoint"
                 print "New Waypoint"
                 destLat = wayPointList[0]   #extract destination coordinates from waypoint list
-                destLon = wayPointList[1] 
-                print destLat, destLon   
-                waypoint_flag = True                
-            #GPS NOLINE                                
+                destLon = wayPointList[1]
+                print destLat, destLon
+                waypoint_flag = True
+            #GPS NOLINE
             elif 202 == state_present:            #drive to waypoint state
-                #record location data                       
+                #record location data
                 #get current time for logging
                 timeSecs = rospy.get_time()
                 with open("/home/user1/catkin_ws/posPoints.csv", "a") as posFile:
                     posFile.write(str(timeSecs)+','+str(distance)+','+str(desBearing)+','+str(robot_heading)+'\n')                           #haven't arrived; keep going
                 error=steeringController(robot_heading,desBearing,distance)
                 print "heading error & distance = ",error,distance
-            #GPS ARRIVED    
+            #GPS ARRIVED
             elif 203 == state_present:            #arrived state
                 #perform arrival routine (e.g. flash LEDs); in this case, delay for 5 seconds
-                print "Stopping motors & going to sleep for 5 seconds"                    
-                stop() 
+                print "Stopping motors & going to sleep for 5 seconds"
+                stop()
                 startTime = rospy.get_rostime()
                 d = rospy.Duration.from_sec(5.0)
                 while (rospy.get_rostime() - startTime < d):
