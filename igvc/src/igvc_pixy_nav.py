@@ -59,7 +59,7 @@ presentSignature = [0,0,0,0,0,0,0] #format of sig. list:  frame, type, signature
 closestSignature = [0,0]
 
 ###GPS_Nav
-#Can be set manually to test changes between line following and gps states
+#Can be set manually to test changes between line following and gps states $$CURRENTLY SET FOR TESTING| SHOULD ALL BE SET TO 0$$
 lat = 14
 lon = 14
 destLat = 0
@@ -503,7 +503,7 @@ if __name__ == '__main__':
                 #get current time for logging
                 timeSecs = rospy.get_time()
                 with open("/home/user1/catkin_ws/posPoints.csv", "a") as posFile:
-                    posFile.write(str(timeSecs)+','+str(distance)+','+str(desBearing)+','+str(robot_heading)+'\n')                           #haven't arrived; keep going
+                    posFile.write(str(timeSecs)+','+str(distance)+','+str(desBearing)+','+str(robot_heading)+'\n') #haven't arrived; keep going
                 error=steeringController(robot_heading,desBearing,distance)
                 #print "heading error & distance = ",error,distance
             #GPS ARRIVED
