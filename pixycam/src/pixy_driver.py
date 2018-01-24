@@ -40,6 +40,9 @@ def pixy_driver():
                 blockInfo = [frame, blocks[index].type, blocks[index].signature, blocks[index].x, blocks[index].y, blocks[index].width, blocks[index].height]
                 sigArray.data = blockInfo
                 pub.publish(sigArray)
+		else:
+			sigArray.data = [0,0,0,0,0,0,0]
+			pub.publish(sigArray)
         rate.sleep()
 
 if __name__ == '__main__':
