@@ -22,7 +22,11 @@ pixyXHardRight = 20
 pixyXTurnLeft = 290
 pixyXTurnRight = 5
 
-#####################################################
+############## Button Layout #####################
+#'A'[0] - allow movement while in manual mode
+#'B'[1] - toggle between autonomous and manual modes
+#'Y'[3] - Manually switch between left and right side following
+#'X'[2] - Change "gps coordinates" of Izzy for testing without gps component
 
 ############## Global Variables #####################
 
@@ -327,13 +331,12 @@ if __name__ == '__main__':
             waypoint_flag = True
         rightFollow_flag = True
         while not rospy.is_shutdown():
-            print presentSignature
             ###PROCESS INPUT###
             #GPS Mode ... manual switch $$TESTING PURPOSES$$
             if len(controller.buttons)>1 and controller.buttons[2] == 1 and prevX == 0:
                     gps_flag = not (gps_flag)
-                    #lat -= 1
-                    #lon -= 1
+                    lat -= 1
+                    lon -= 1
                     prevX = 1
                     print "GPS", gps_flag
                     print "Lat", lat
@@ -351,13 +354,14 @@ if __name__ == '__main__':
                     #print "Reached Waypoint!!!"
                     destination_flag = True
                     waypoint_flag = False
-            #Autonomous Mode
+            ##Autonomous Mode
             if len(controller.buttons)>1 and controller.buttons[1] == 1 and prevB == 0:
                     autonomous_flag = not (autonomous_flag)
                     prevB = 1
                     #print "Auto", autonomous_flag
             elif len(controller.buttons)>1 and controller.buttons[1] ==0:
                     prevB = 0
+            #Right/Left side follow switch $$TESTING PURPOSES$$
             if len(controller.buttons)>1 and controller.buttons[3] == 1 and prevY == 0:
                     rightFollow_flag = not (rightFollow_flag)
                     prevY = 1
@@ -365,7 +369,7 @@ if __name__ == '__main__':
             elif len(controller.buttons)>1 and controller.buttons[3] ==0:
                     prevY = 0
 
-            #PixyCam
+            ##PixyCam
             if closesetSignature = [0,0]:
                 lineDetect_flag = False
                 #print "No Sig"
