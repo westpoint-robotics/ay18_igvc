@@ -57,6 +57,7 @@ controller = Joy()
 presentFrameNum = 0
 presentSignature = [0,0,0,0,0,0,0] #format of sig. list:  frame, type, signatureNum, x, y, width, height
 closestSignature = [0,0]
+sigList = [[0,0]]
 
 ###GPS_Nav
 #Can be set manually to test changes between line following and gps states $$CURRENTLY SET FOR TESTING| SHOULD ALL BE SET TO 0$$
@@ -275,20 +276,21 @@ def pixy_callback(sig):
     global previousSignature
     global presentFrameNum
     global closestSignature
+    global sigList
     final =[0,0]
     presentSignature = sig.data
     ##Checking for most immediate threat in frame
     #Check if block is in the same frame
     if presentFrameNum == presentSignature[0] and presentSignature[0] != 0:
         #Check if we care about signature
-        sigList.append([presentSignature[3],presentSignature[4] + presentSignature[6])
+        sigList.append([presentSignature[3],presentSignature[4] + presentSignature[6]])
     #If not in frame send previous frames close block
     else:
         for sign in sigList:
             if sign[1] > final[1]:
                 final = sign
         closestSignature = final
-        sigList = [presentSignature[3],presentSignature[4]+presentSignature[6]]
+        sigList = [[presentSignature[3],presentSignature[4]+presentSignature[6]]]
     presentFrameNum = sig.data[0]
 
 def button_callback(sig):
@@ -324,7 +326,7 @@ if __name__ == '__main__':
 
         flg_nothingFound, wayPointList = getWayPoint(wayPointNum) # where wayPointlist = [lat,lon]
         if flg_nothingFound:            #if no waypoint returned, then goto "stop" state
-            #print "No Starting WayPoint"
+            print "No Starting WayPoint"
         else:
             destLat = wayPointList[0]   #extract destination coordinates from waypoint list
             destLon = wayPointList[1]
@@ -370,7 +372,7 @@ if __name__ == '__main__':
                     prevY = 0
 
             ##PixyCam
-            if closesetSignature = [0,0]:
+            if closestSignature == [0,0]:
                 lineDetect_flag = False
                 #print "No Sig"
             elif closestSignature[1] > pixyYCutOff:
@@ -394,7 +396,7 @@ if __name__ == '__main__':
             # 212   ||   GPS LineFollowLeft
 
             ###SET STATE###
-            stateOut = "Manaul
+            stateOut = "Manaul"
             if autonomous_flag:
                 if gps_flag:
                     if destination_flag:
