@@ -12,8 +12,8 @@ gpsSwitchDistance = 7
 #How far Izzy will see
 pixyYCutOff = 100 #Higher the number means shortest view
 #X and Y to make Izzy back up
-pixyYBackUp = 50
-pixyXBackup = 290
+pixyYBackUp = 180
+pixyXBackUp = 290
 #X and Y to make Izzy turn Hard left
 pixyYHardTurn = 80
 pixyXHardLeft = 300
