@@ -10,6 +10,7 @@ import numpy as np;
 #read image from camera
 cam = cv2.VideoCapture(0)
 blue = 1
+cv2.namedWindow('Camera') 
 
 class Blocks (Structure):
   _fields_ = [ ("type", c_uint),
@@ -78,9 +79,12 @@ def cam_driver():
           blockInfo = [frame, blue, x, y, w, h, 0]
           sigArray.data = blockInfo
           pub.publish(sigArray)
+          cv2.imshow('Camera', view)
       else:
+          cv2.imshow('Camera', view)
           sigArray.data = [0,0,0,0,0,0,0]
           pub.publish(sigArray)
+      
       rate.sleep()
 
 if __name__ == '__main__':
