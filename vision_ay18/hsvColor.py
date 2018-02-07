@@ -6,7 +6,11 @@ def nothing(x):
     pass
  
 #Capture video from the stream
+<<<<<<< HEAD
 cap = cv2.VideoCapture(0)
+=======
+cap = cv2.VideoCapture(1)
+>>>>>>> 1a8caadf93a9c7ff699ee62b1fec3abefc9c0859
 #cap.set(cv2.CAP_PROP_EXPOSURE, 10)
 
 cv2.namedWindow('Colorbars') #Create a window named 'Colorbars'
@@ -55,6 +59,7 @@ while(1):
 
     res = cv2.bitwise_and(frame,frame, mask =mask)
 #
+<<<<<<< HEAD
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     for index,contour in enumerate(contours):
@@ -62,6 +67,13 @@ while(1):
         if(w*h > 100):
             cv2.rectangle(frame,(x,y),(x+w,y+h),(0,0,0),4)
             print x,y
+=======
+    im2, contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+    for index,contour in enumerate(contours):
+        x,y,w,h = cv2.boundingRect(contour)
+        cv2.rectangle(frame,(x,y),(x+w,y+h),(0,0,0),4)
+>>>>>>> 1a8caadf93a9c7ff699ee62b1fec3abefc9c0859
 
     #print cap.get(cv2.CAP_PROP_EXPOSURE)
  
