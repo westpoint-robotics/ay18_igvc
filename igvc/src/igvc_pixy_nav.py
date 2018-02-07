@@ -8,19 +8,22 @@ from geometry_msgs.msg import Twist
 #####VARIABLES TO CHANGE TO AFFECT ROBOT ACTIONS#####
 #Distance from first waypoint Izzy should switch from linefollowing to gps in meters
 gpsSwitchDistance = 7
+##PIXY RES 320 x 200
+##OPENCV RES 640 x 480
+
 
 #How far Izzy will see
-pixyYCutOff = 100 #Higher the number means shortest view
+pixyYCutOff = 240 #100#Higher the number means shortest view
 #X and Y to make Izzy back up
-pixyYBackUp = 180
-pixyXBackUp = 290
+pixyYBackUp = 432 #180
+pixyXBackUp = 580 #290
 #X and Y to make Izzy turn Hard left
-pixyYHardTurn = 80
-pixyXHardLeft = 300
-pixyXHardRight = 20
+pixyYHardTurn = 192 #80
+pixyXHardLeft = 600 #300
+pixyXHardRight = 40 #20
 #X to make Izzy turn left
-pixyXTurnLeft = 290
-pixyXTurnRight = 5
+pixyXTurnLeft = 580 #290
+pixyXTurnRight = 10 #5
 
 ############## Button Layout #####################
 #'A'[0] - allow movement while in manual mode
@@ -50,6 +53,7 @@ gpsDecision_flag = False #Has A decision been made for gps line detect
 
 ###General Bot movement/control
 pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+pubO = rospy.Publisher('auto', Bool, queue_size=1)
 moveCmd = Twist()
 controller = Joy()
 
@@ -91,12 +95,23 @@ def stop():
 def gradRight():
     #Mostly Forward and Right
     global moveCmd
-    moveCmd.linear.x = 0.25
+    moveCmd.linear.x = 0.25  #0.25
     moveCmd.linear.y = 0
     moveCmd.linear.z = 0
     moveCmd.angular.x = 0
     moveCmd.angular.y = 0
-    moveCmd.angular.z = 0.4
+    moveCmd.angular.z = 0.4   #0.4
+    pub.publish(moveCmd)
+
+def gradLeft():
+    #Mostly Forward and Right
+    global moveCmd
+    moveCmd.linear.x = 0.25  #0.25
+    moveCmd.linear.y = 0
+    moveCmd.linear.z = 0
+    moveCmd.angular.x = 0
+    moveCmd.angular.y = 0
+    moveCmd.angular.z = 0.4   #0.4
     pub.publish(moveCmd)
 
 def turnLeft():
@@ -336,24 +351,25 @@ if __name__ == '__main__':
             ###PROCESS INPUT###
             #GPS Mode ... manual switch $$TESTING PURPOSES$$
             if len(controller.buttons)>1 and controller.buttons[2] == 1 and prevX == 0:
-                    gps_flag = not (gps_flag)
+                    #gps_flag = not (gps_flag)
                     lat -= 1
                     lon -= 1
                     prevX = 1
                     print "GPS", gps_flag
-                    print "Lat", lat
-                    print "Lon", lon
+                    print "Current", lat, lon
+                    print "Dest", destLat, destLon
+                    #print "Distance", distance
             elif len(controller.buttons)>1 and controller.buttons[2] ==0:
                     prevX = 0
             #Nav ... autonomous switch
             distance, desBearing = haversine(lat,lon, destLat, destLon)
-            #distance = (lat + lon) - (destLat+destLon)
+            distance = (lat + lon) - (destLat+destLon)
             if autonomous_flag and gps_flag == False and gpsSwitchDistance > distance:
                 gps_flag = True
                 #print "GPS ON"
             #Nav ... reach destination
             if waypoint_flag and gps_flag and distance < 1:   #reach waypoint (close enough)
-                    #print "Reached Waypoint!!!"
+                    print "Reached Waypoint!!!"
                     destination_flag = True
                     waypoint_flag = False
             ##Autonomous Mode
@@ -363,11 +379,12 @@ if __name__ == '__main__':
                     #print "Auto", autonomous_flag
             elif len(controller.buttons)>1 and controller.buttons[1] ==0:
                     prevB = 0
+            pubO.publish(autonomous_flag)
             #Right/Left side follow switch $$TESTING PURPOSES$$
             if len(controller.buttons)>1 and controller.buttons[3] == 1 and prevY == 0:
                     rightFollow_flag = not (rightFollow_flag)
                     prevY = 1
-                    #print "Right", rightFollow_flag
+                    print "Right", rightFollow_flag
             elif len(controller.buttons)>1 and controller.buttons[3] ==0:
                     prevY = 0
 
@@ -396,7 +413,7 @@ if __name__ == '__main__':
             # 212   ||   GPS LineFollowLeft
 
             ###SET STATE###
-            stateOut = "Manaul"
+            stateOut = "Manual"
             if autonomous_flag:
                 if gps_flag:
                     if destination_flag:
