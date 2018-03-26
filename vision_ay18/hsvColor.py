@@ -58,7 +58,6 @@ while(1):
     mask = cv2.inRange(hsv,HSVLOW, HSVHIGH)
 
     res = cv2.bitwise_and(frame,frame, mask =mask)
-#
 <<<<<<< HEAD
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
@@ -78,7 +77,6 @@ while(1):
     #print cap.get(cv2.CAP_PROP_EXPOSURE)
  
     cv2.imshow('res', res)
-#
     cv2.imshow('Colorbars', frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'): #if CTRL-C is pressed then exit the loop
