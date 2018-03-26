@@ -8,21 +8,25 @@ from geometry_msgs.msg import Twist
 #####VARIABLES TO CHANGE TO AFFECT ROBOT ACTIONS#####
 #Distance from first waypoint Izzy should switch from linefollowing to gps in meters
 gpsSwitchDistance = 7
+##PIXY RES 320 x 200
+##OPENCV RES 640 x 480
 
+#Numbers Below are pixels
 #How far Izzy will see
-pixyYCutOff = 100 #Higher the number means shortest view
+pixyYCutOff = 240 #100#Higher the number means shortest view
 #X and Y to make Izzy back up
-pixyYBackUp = 180
-pixyXBackUp = 290
+pixyYBackUp = 432 #180
+pixyXBackUp = 580 #290
 #X and Y to make Izzy turn Hard left
-pixyYHardTurn = 80
-pixyXHardLeft = 300
-pixyXHardRight = 20
+pixyYHardTurn = 192 #80
+pixyXHardLeft = 600 #300
+pixyXHardRight = 40 #20
 #X to make Izzy turn left
-pixyXTurnLeft = 290
-pixyXTurnRight = 5
+pixyXTurnLeft = 580 #290
+pixyXTurnRight = 10 #5
 
 ############## Button Layout #####################
+#USE WITH XBOX360 Controller
 #'A'[0] - allow movement while in manual mode
 #'B'[1] - toggle between autonomous and manual modes
 #'Y'[3] - Manually switch between left and right side following
@@ -50,14 +54,15 @@ gpsDecision_flag = False #Has A decision been made for gps line detect
 
 ###General Bot movement/control
 pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+pubO = rospy.Publisher('auto', Bool, queue_size=1)
 moveCmd = Twist()
 controller = Joy()
 
 ###Pixy_Nav
 presentFrameNum = 0
 presentSignature = [0,0,0,0,0,0,0] #format of sig. list:  frame, type, signatureNum, x, y, width, height
-closestSignature = [0,0]
-sigList = [[0,0]]
+closestSignature = [0,0] #format: bottom left of detected signature [x,y]
+sigList = [[0,0]] #A list of signatures in closestSig format
 
 ###GPS_Nav
 #Can be set manually to test changes between line following and gps states $$CURRENTLY SET FOR TESTING| SHOULD ALL BE SET TO 0$$
@@ -69,6 +74,8 @@ robot_heading = 0
 #declination angle based on geographic location
 #see #https://www.ngdc.noaa.gov/geomag-web/
 #needed for "grid-to-magnetic" angle
+wayPointFileString = "/home/user1/catkin_ws/src/igvc/src/wayPoints.csv"
+posOutFile = "/home/user1/catkin_ws/posPoints.csv"
 declinationAngle = 13
 wayPointNum = 1     # initialize robot for getting first waypoint in the csv file
 
@@ -91,12 +98,23 @@ def stop():
 def gradRight():
     #Mostly Forward and Right
     global moveCmd
-    moveCmd.linear.x = 0.25
+    moveCmd.linear.x = 0.25  #0.25
     moveCmd.linear.y = 0
     moveCmd.linear.z = 0
     moveCmd.angular.x = 0
     moveCmd.angular.y = 0
-    moveCmd.angular.z = 0.4
+    moveCmd.angular.z = 0.4   #0.4
+    pub.publish(moveCmd)
+
+def gradLeft():
+    #Mostly Forward and Right
+    global moveCmd
+    moveCmd.linear.x = 0.25  #0.25
+    moveCmd.linear.y = 0
+    moveCmd.linear.z = 0
+    moveCmd.angular.x = 0
+    moveCmd.angular.y = 0
+    moveCmd.angular.z = 0.4   #0.4
     pub.publish(moveCmd)
 
 def turnLeft():
@@ -191,14 +209,14 @@ def getWayPoint(wayPointNum):
     #2 output parameters:  flag on whether waypoint found; and, waypoint coordinates
     count = 0               #counter keeps track of line number in file
     flg_nothingFound = True         #flag; set to true if waypoint number is NOT found
-    with open("/home/user1/catkin_ws/src/igvc/src/wayPoints.csv",'r') as wayPoints: #change path to file as necessary
+    with open(wayPointFileString,'r') as wayPoints: #change path to file as necessary
         for line in wayPoints:      #iterate over every line in file
             count = count + 1       #track line number of file
             if count == wayPointNum:    #check to see if this is the desired waypoint number (i.e. row)
                 flg_nothingFound = False    #found a match!  Set flag.
                 wayPointList = line.strip().split(',') #convert string into list of strings; slit into list based on commas in string
                 wayPointList = map(float,wayPointList) #convert list of strings into list of floats
-    if flg_nothingFound == True:     # didn't find line number (no more wayPoints in file)
+    if flg_nothingFound:     # didn't find line number (no more wayPoints in file)
         print "stopping robot; there are no more waypoints"
         wayPointList = [] #return empty waypoint list if waypoint number not in file
     return flg_nothingFound, wayPointList
@@ -233,9 +251,8 @@ def steeringController(currentHeading,desiredHeading,dist):
         else:                                       #else turn left
             error=turnLeftOption
             moveVal = linearMap(error, minErr, maxErr, 0, .9)
-            moveVal = moveVal*-1    #assign as negative for publishing (-1:0 are left turn commands)
-            print "turn left with angular x: ", moveVal
-            moveCmd.angular.z=moveVal
+            print "turn left with angular x: ", -moveVal
+            moveCmd.angular.z = -moveVal
     else:       #no turn necessary. Go straight
         moveCmd.angular.z=0
         print "go straight"
@@ -284,7 +301,7 @@ def pixy_callback(sig):
     if presentFrameNum == presentSignature[0] and presentSignature[0] != 0:
         #Check if we care about signature
         sigList.append([presentSignature[3],presentSignature[4] + presentSignature[6]])
-    #If not in frame send previous frames close block
+    #If presentSig not in same frame as previous signature send the most immediate threat from the previous frame
     else:
         for sign in sigList:
             if sign[1] > final[1]:
@@ -336,40 +353,42 @@ if __name__ == '__main__':
             ###PROCESS INPUT###
             #GPS Mode ... manual switch $$TESTING PURPOSES$$
             if len(controller.buttons)>1 and controller.buttons[2] == 1 and prevX == 0:
-                    gps_flag = not (gps_flag)
-                    lat -= 1
-                    lon -= 1
-                    prevX = 1
-                    print "GPS", gps_flag
-                    print "Lat", lat
-                    print "Lon", lon
+                #gps_flag = not (gps_flag)
+                lat -= 1
+                lon -= 1
+                prevX = 1
+                print "GPS", gps_flag
+                print "Current", lat, lon
+                print "Dest", destLat, destLon
+                #print "Distance", distance
             elif len(controller.buttons)>1 and controller.buttons[2] ==0:
-                    prevX = 0
+                prevX = 0
             #Nav ... autonomous switch
             distance, desBearing = haversine(lat,lon, destLat, destLon)
-            #distance = (lat + lon) - (destLat+destLon)
+            distance = (lat + lon) - (destLat+destLon)
             if autonomous_flag and gps_flag == False and gpsSwitchDistance > distance:
                 gps_flag = True
                 #print "GPS ON"
             #Nav ... reach destination
             if waypoint_flag and gps_flag and distance < 1:   #reach waypoint (close enough)
-                    #print "Reached Waypoint!!!"
-                    destination_flag = True
-                    waypoint_flag = False
+                print "Reached Waypoint!!!"
+                destination_flag = True
+                waypoint_flag = False
             ##Autonomous Mode
             if len(controller.buttons)>1 and controller.buttons[1] == 1 and prevB == 0:
-                    autonomous_flag = not (autonomous_flag)
-                    prevB = 1
-                    #print "Auto", autonomous_flag
+                autonomous_flag = not (autonomous_flag)
+                prevB = 1
+                #print "Auto", autonomous_flag
             elif len(controller.buttons)>1 and controller.buttons[1] ==0:
-                    prevB = 0
+                 prevB = 0
+            pubO.publish(autonomous_flag)
             #Right/Left side follow switch $$TESTING PURPOSES$$
             if len(controller.buttons)>1 and controller.buttons[3] == 1 and prevY == 0:
-                    rightFollow_flag = not (rightFollow_flag)
-                    prevY = 1
-                    #print "Right", rightFollow_flag
+                rightFollow_flag = not (rightFollow_flag)
+                prevY = 1
+                print "Right", rightFollow_flag
             elif len(controller.buttons)>1 and controller.buttons[3] ==0:
-                    prevY = 0
+                 prevY = 0
 
             ##PixyCam
             if closestSignature == [0,0]:
@@ -394,48 +413,59 @@ if __name__ == '__main__':
             # 210   ||   GPS Line Decision
             # 211   ||   GPS LineFollowRight
             # 212   ||   GPS LineFollowLeft
+            manualMode = 000;
+            lineFollowRightNoLine = 100
+            lineFollowLeftNoLine = 110
+            lineFollowRightLine = 101
+            lineFollowLeftLine = 111
+            GPSGetWayPoint = 201
+            GPSNoLine = 202
+            GPSArrived = 203
+            GPSLineDecision = 210
+            GPSLineFollowRight = 211
+            GPSLineFollowLeft = 212
 
             ###SET STATE###
-            stateOut = "Manaul"
+            stateOut = "Manual"
             if autonomous_flag:
                 if gps_flag:
                     if destination_flag:
-                        state_present = 203
+                        state_present = GPSArrived
                         stateOut = "GPS ARRIVED"
                     elif waypoint_flag:
                         if lineDetect_flag:
                             if not gpsDecision_flag:
-                                state_present = 210
+                                state_present = GPSLineDecision
                                 stateOut = "GPS LINE DECISION"
                             elif rightFollow_flag:
-                                state_present = 211
+                                state_present = GPSLineFollowRight
                                 stateOut = "GPS LINEFOLLOWRIGHT"
                             else:
-                                state_present = 212
+                                state_present = GPSLineFollowLeft
                                 stateOut = "GPS LINEFOLLOWLEFT"
                         else:
-                            state_present = 202
+                            state_present = GPSNoLine
                             stateOut = "GPS NOLINE"
                     else:
-                        state_present = 201
+                        state_present = GPSGetWayPoint
                         stateOut = "GPS GET WAYPOINT"
                 else:
                     if rightFollow_flag:
                         if lineDetect_flag:
-                            state_present = 101
+                            state_present = lineFollowRightLine
                             stateOut = "LINEFOLLOWRIGHT LINE"
                         else:
-                            state_present = 100
+                            state_present = lineFollowRightNoLine
                             stateOut = "LINEFOLLOWRIGHT NOLINE"
                     else:
                         if lineDetect_flag:
-                            state_present = 111
+                            state_present = lineFollowLeftLine
                             stateOut = "LINEFOLLOWLEFT LINE"
                         else:
-                            state_present = 110
+                            state_present = lineFollowLeftNoLine
                             stateOut = "LINEFOLLOWLEFT NOLINE"
             else:
-                state_present = 000
+                state_present = manualMode
             #print stateOut
 
             ###EXECUTE###
@@ -504,7 +534,7 @@ if __name__ == '__main__':
                 #record location data
                 #get current time for logging
                 timeSecs = rospy.get_time()
-                with open("/home/user1/catkin_ws/posPoints.csv", "a") as posFile:
+                with open(posOutFile, "a") as posFile:
                     posFile.write(str(timeSecs)+','+str(distance)+','+str(desBearing)+','+str(robot_heading)+'\n') #haven't arrived; keep going
                 error=steeringController(robot_heading,desBearing,distance)
                 #print "heading error & distance = ",error,distance
@@ -529,17 +559,17 @@ if __name__ == '__main__':
             #GPS LINE RIGHTFOLLOW
             elif 211 == state_present:
                 if presentSignature[3] < 250 or (presentSignature[5] > 200):# or (presentSignature[3]+presentSignature[5]>250)):
-                        turnLeft()
+                    turnLeft()
                 elif presentSignature[3] > 250 or (presentSignature[5] < 50):# or (presentSignature[3]+presentSignature[5]<250)):
-                        turnRight()
+                    turnRight()
                 else:
                     goStraight()
             #GPS LINE LEFTFOLLOW
             elif 212 == state_present:
                 if presentSignature[3] > 50 or (presentSignature[5] > 200):# or (presentSignature[3]+presentSignature[5]<250)):
-                        turnRight()
+                    turnRight()
                 elif presentSignature[3] < 50 or (presentSignature[5] < 50):# or (presentSignature[3]+presentSignature[5]>250)):
-                        turnLeft()
+                    turnLeft()
                 else:
                     goStraight()
             #INVALID STATE
