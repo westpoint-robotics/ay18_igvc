@@ -8,13 +8,20 @@
       <param name="autorepeat_rate" value="20" />
     </node>
     
+    <!--
+    <include file="$(find pointgrey_camera_driver)/launch/camera.launch"/>
+    -->
+
     <node pkg="igvc" type="button_publisher.py" name="button_pub" output="screen">
     </node>
 
-    <node pkg="igvc" type="igvc_pixy_nav.py" name="igvc_pixy_nav" output="screen">
+    <node pkg="igvc" type="compHeading.py" name="tiltComp_Heading" output="screen">
     </node>
 
-    <node pkg="pixycam" type="pixy_driver.py" name="pixy_driver" output="screen">
+    <node pkg="igvc" type="izzy_nav.py" name="izzy_nav" output="screen">
+    </node>
+
+    <node pkg="pixycam" type="pixy_driver.py" name="pixycam" output="screen">
     </node>
 
     <node pkg="xsens_driver" type="mtnode_new.py" name="xsens_driver" output="screen" ns="xsens">
@@ -22,10 +29,9 @@
 
     <node pkg="gvrbot" type="batterySubscriberPublisher.py" name="batteryPercent" output="screen" >
 	</node>
-<!--
+
     <node pkg="rosserial_python" type="serial_node.py" name="serial_node">
         <param name="port" value="/dev/ttyACM0"/>
 	</node>
--->
 
 </launch>

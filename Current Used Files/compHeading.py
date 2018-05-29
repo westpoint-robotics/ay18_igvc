@@ -20,20 +20,29 @@ magZ=0
 #################Functions Non-Callback#################
         
 def calcRollAngle(accY,accZ):
+    #calculate roll angle
     rollAngle = math.atan2(accY,accZ)
     return rollAngle
 
 def calcPitchAngle(accX,accY,accZ,rollAngle):
+    #calculate pitch angle
     pitchAngle = math.atan2(-accX, ((accY * math.sin(rollAngle)) + (accZ * math.cos(rollAngle))))
     return pitchAngle
 
 def tiltCompHeading(magX,magY,magZ,pitchAngle,rollAngle):
+    #calculate tilt compensated heading
     Mx2 = (magX * math.cos(pitchAngle)) + (magZ*math.sin(pitchAngle))
     My2 = (magX * math.sin(rollAngle) * math.sin(pitchAngle)) + magY*math.cos(rollAngle) - (magZ*math.sin(rollAngle)*math.cos(pitchAngle))       
     compHeadingDeg = math.atan2(My2,Mx2) * (180/math.pi)
     if compHeadingDeg <0:       #correct for degree wrap
         compHeadingDeg = compHeadingDeg + 360
     return compHeadingDeg
+
+def simpleHeading(magX,magY):
+    headingDegrees = math.atan2(magY,magX) * (180/math.pi)
+    if headingDegrees <0:       #correct for degree wrap
+        headingDegrees = headingDegrees + 360
+    return headingDegrees
 
 #################Callback Functions#################
 
@@ -59,21 +68,25 @@ def magCallback(data):
     
 def imuTalker():
     #initialize node, establish publishing, subscribe to necessary xsens data
-    pub=rospy.Publisher("tiltComp_heading", Int16, queue_size=1)
-    rospy.init_node("imu_driver", anonymous=True)
+    pub=rospy.Publisher('tiltComp_heading', Int16, queue_size=1)
+    pubSimple=rospy.Publisher('simple_heading', Int16, queue_size=1)
+    rospy.init_node('imu_driver', anonymous=True)
     rospy.Subscriber("/xsens/imu/data",Imu,imuCallback)
     rospy.Subscriber("/xsens/magnetic",Vector3Stamped,magCallback)
     
     rate = rospy.Rate(15) # 15hz
     compHeadingDeg = Int16()
+    headingDeg = Int16()
     while not rospy.is_shutdown():
         #Calculate roll/pitch angles from accelerometer
         rollAngle = calcRollAngle(accY,accZ)
         pitchAngle = calcPitchAngle(accX,accY,accZ,rollAngle)
         #find tilt compensated heading
-        compHeadingDeg = tiltCompHeading(magX,magY,magZ,pitchAngle,rollAngle)         
+        compHeadingDeg = tiltCompHeading(magX,magY,magZ,pitchAngle,rollAngle)     
+        headingDeg = simpleHeading(magX,magY)    
         #publish the data        
-        pub.publish(compHeadingDeg)        
+        pub.publish(compHeadingDeg)
+        pubSimple.publish(headingDeg)        
         rate.sleep()
 
 if __name__ == '__main__':

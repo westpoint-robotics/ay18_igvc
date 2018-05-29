@@ -1,28 +1,27 @@
 #include "LPD8806.h"
 #include "SPI.h"
 #include <ros.h>
-#include <sensor_msgs/Joy.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt8.h>
 
 
-//define button type
-bool leftButtonPressed;
-bool rightButtonPressed;
+//define logic state:
+bool autoMode;
 
 // Number of RGB LEDs in strand:
-int nLEDs = 4;
+int nLEDs = 70;
 
 // Chose 2 pins for output; can be any valid output pins:
 int dataPin  = 2;
 int clockPin = 3;
 
-int izzyState = 0; // General State Machine for Loops
+int izzyState = 0; //General State Machine for Loops
+int controlRepeat = 0; //Conditional Variable to Avoid Blinking During Manual Mode, Starts in Manual Mode
 int lastButton = 0; //Conditional Variable to Avoid Multiple Fires with Button Push
 uint8_t batteryLife = 100; //Hard value for battery life --- temporary, eventually subscribe to battery 
-int currentPixel = 0; //Pixel being lit up within colorChase
-int pixelIteration = nLEDs; //Pixels in colorChase
-unsigned long lastTime = millis(); //Initialize the timer for colorChase
+uint8_t oldBatteryLife = 100; //Variable to compare battery life and determine if color change is needed
+
 
 // First parameter is the number of LEDs in the strand.  The LED strips
 // are 32 LEDs per meter but you can extend or cut the strip.  Next two
@@ -39,25 +38,23 @@ LPD8806 strip = LPD8806(nLEDs, dataPin, clockPin);
 
 ros::NodeHandle  nh;
 
-void messageCb( const sensor_msgs::Joy& joy){   //State Callback
-  if ((joy.buttons[1]) == 1 && lastButton == 0){
-    
-    if (izzyState == 0){
+void messageCb( const std_msgs::Bool& autoState){   //State Callback
+  if (autoState.data){
       izzyState = 1;
+      controlRepeat = 0;
     }
-    else{
+  else {
       izzyState = 0;
     }
   }
-  lastButton = joy.buttons[1];
 
-}
 
 void messageCb2( const std_msgs::UInt8& batteryPercent){
+   oldBatteryLife = batteryLife;
    batteryLife = uint8_t(batteryPercent.data);
 }
   
-ros::Subscriber<sensor_msgs::Joy> stateSub("joy", &messageCb );
+ros::Subscriber<std_msgs::Bool> stateSub("autoState", &messageCb );
 ros::Subscriber<std_msgs::UInt8> batterySub("batteryPercent", &messageCb2);
 
 void setup()
@@ -97,56 +94,50 @@ void colorHold(uint32_t c, uint8_t wait) {
 
 
 
-// Chase one dot down the full strip.
-void colorChase(uint32_t c, uint8_t wait) {
-  int i;
-
-  // Start by turning all pixels off:
-  for(i=0; i<strip.numPixels(); i++) strip.setPixelColor(i, 0);
-  
-  if (currentPixel >= pixelIteration){
-    currentPixel = 0;
-  }
-
-  unsigned long currentTime = millis();
-  if ((currentTime - lastTime) > 50) {
-  // Then display one pixel at a time:
-    if (currentPixel <= pixelIteration){
-      strip.setPixelColor(currentPixel, c); // Set new pixel 'on'
-      strip.show();              // Refresh LED states
-      strip.setPixelColor(currentPixel, 0); // Erase pixel, but don't refresh!    
-      currentPixel = currentPixel + 1;    
-      lastTime = millis();
-      //delay(wait); DON'T USE DELAY IN COLOR FUNCTION!!!
-    }
-  }
-}
-
-
-
 void loop() {
   nh.spinOnce();
-  if (izzyState == 0){
+  if (izzyState == 0){ // Manual Mode
       if (batteryLife >= 60){
-        colorHold(strip.Color(  0,127,  0), 100); // Green for High Battery
+        if (controlRepeat == 0){
+          colorHold(strip.Color(  0,127,  0), 100); // Green for High Battery
+          controlRepeat = 1;
+        }
+        if (oldBatteryLife<60){
+          colorHold(strip.Color(  0,127,  0), 100); // Green for High Battery
+        }
       }
       else if (20 < batteryLife && batteryLife < 60){
-        colorHold(strip.Color( 127, 127,   0), 100); // Yellow for Medium Battery
+        if (controlRepeat == 0){
+          colorHold(strip.Color( 127, 30,   0), 100); // Orange-Yellow for Medium Battery
+          controlRepeat = 1;
+        }
+        if (oldBatteryLife<=20){
+          colorHold(strip.Color( 127, 30,   0), 100); // Orange-Yellow for Medium Battery
+        }
+        if (oldBatteryLife>=60){
+          colorHold(strip.Color( 127, 30,   0), 100); // Orange-Yellow for Medium Battery
+        }
       }
       else{
-        colorHold(strip.Color( 127,   0,   0), 100); // Red for Low Battery
+        if (controlRepeat == 0){
+          colorHold(strip.Color( 127,   0,   0), 100); // Red for Low Battery
+          controlRepeat = 1;
+        }
+        if (oldBatteryLife>20){
+          colorHold(strip.Color( 127,   0,   0), 100); // Red for Low Battery
+        }
       }
       //digitalWrite(13, HIGH-digitalRead(13));   // blink the led 
   }
-  if (izzyState == 1){
+  if (izzyState == 1){ // Autonomous Mode
       if (batteryLife >= 60){
-        colorChase(strip.Color(  0,127,  0), 100); // Green for High Battery 
+        colorHold(strip.Color(  0,127,  0), 100); // Green for High Battery 
       }
       else if (20 < batteryLife && batteryLife < 60){
-        colorChase(strip.Color( 127, 127,   0), 100); // Yellow for Medium Battery
+        colorHold(strip.Color( 127, 30,   0), 100); // Orange-Yellow for Medium Battery
       }
       else{
-        colorChase(strip.Color( 127,   0,   0), 100); // Red for Low Battery
+        colorHold(strip.Color( 127,   0,   0), 100); // Red for Low Battery
       //digitalWrite(13, LOW-digitalRead(13));   // blink the led 
       }
   }
